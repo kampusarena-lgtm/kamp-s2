@@ -1,0 +1,15 @@
+﻿{
+  "ReceiverUrl": "http://192.168.1.77:8777/pc-kontrol/rapor/",
+  "ReceiverPort": 8777,
+  "SharedKey": "",
+  "TimeoutSeconds": 5,
+  "MaxPendingPerRun": 10,
+  "StartupDelaySeconds": 30,
+  "RequiredDevices": {
+    "Keyboard": true,
+    "Mouse": true,
+    "AudioOutput": true
+  },
+  "ExpectedAudioNamePattern": "",
+  "ChecksTimeoutSeconds": 40
+}

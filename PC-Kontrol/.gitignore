@@ -1,0 +1,7 @@
+*.tmp
+**/Bekleyen-Raporlar/
+**/PC-Kontrol-Gelen-Raporlar/
+**/son-hata.txt
+**/son-gonderim-hatasi.txt
+**/process.json
+**/Son-Durum.json

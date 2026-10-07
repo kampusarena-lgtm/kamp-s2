@@ -1,0 +1,135 @@
+PC KONTROL v1.1 — Katılımsız kontrol ve yalnızca sorun raporu
+==========================================================
+
+ÇALIŞMA KURALI
+Sorun yoksa pencere, ses, bildirim veya HTTP raporu yok.
+Sorun varsa rapor şu adrese gönderilir:
+  http://192.168.1.77:8777/pc-kontrol/rapor/
+Alıcıya ulaşılamazsa rapor yerelde saklanır. Sonraki kontrol çalışmasında
+yeniden gönderilir. Sorunsuz yeni kontrol, eski bekleyen sorun raporlarının
+yeniden gönderilmesini engellemez; bunlar önceki olayın tarihini taşır.
+
+ÖNCE ALICIYI KUR — 192.168.1.77 BİLGİSAYARINDA
+1. ZIP'i tamamen çıkart. Eslesmeyi-Hazirla.cmd dosyasını bir kez çalıştır.
+2. Alici klasöründeki Aliciyi-Kur.cmd dosyasını çalıştır.
+3. Windows'un yönetici iznini onayla. Bu izin yalnızca HTTP adres kaydı ve
+   yerel ağdan TCP 8777 portuna giriş kuralı oluşturmak için istenir.
+4. Alıcı arka planda başlar ve bu kullanıcının sonraki Windows oturumunda
+   otomatik başlar. Alıcı bilgisayarda bu kullanıcı oturum açmış olmalı.
+5. Gelen sorun raporları Belgeler\PC-Kontrol-Gelen-Raporlar klasöründedir.
+   Her sorun için okunabilir HTML ve ayrıntılı JSON dosyası kaydedilir.
+
+Alıcının IP adresi 192.168.1.77 olarak kalmalı. Windows ağ profili Özel veya
+Etki Alanı olmalı; kurulum Genel ağ profilinde giriş izni açmaz.
+Aliciyi-Baslat.cmd elle ve görünür konsolla alıcıyı çalıştırır. Alıcı zaten
+çalışıyorsa ikinci bir kopya açılmaz. Aliciyi-Durdur.cmd çalışan alıcıyı
+durdurur ve otomatik başlatma kısayolunu kaldırır; raporları silmez.
+
+SONRA GÖNDERİCİYİ KUR — TEST EDİLECEK WINDOWS 11 BİLGİSAYARLARINDA
+1. Aynı ZIP'in Gonderici klasörünü kullan.
+2. Kur-ve-Otomatik-Baslat.cmd dosyasını çalıştır. Göndericide yönetici izni
+   veya ilave yazılım gerekmez.
+3. Kendi başlangıç klasörüne PC Kontrol kısayolu eklenir. Uygulama
+   %LOCALAPPDATA%\PC-Kontrol\Uygulama klasörüne kopyalanır.
+4. Kurulum hemen ilk kontrolü arka planda başlatır. Sonraki Windows
+   oturumlarında da kontrol yapılır. Cihazların hazır olması için önce
+   varsayılan olarak 30 saniye beklenir. Kontrol genellikle birkaç saniyedir;
+   çalışan kontrol işlemi 40 saniyede bitmezse test çalıştırma sorunu raporlanır.
+
+Baslat.cmd sessiz kontrolü elle başlatır. Bekleyen-Raporlari-Gonder.cmd
+donanım testi yapmadan yalnızca eski bekleyen sorunları göndermeyi dener.
+Otomatik-Baslatmayi-Kapat.cmd otomatik kontrolleri kapatır; raporları korur.
+Program gerçek sistem servisi değildir; Windows kullanıcı oturumu açılınca
+çalışır. Gönderici işini bitirince kapanır, sürekli yük üretmez.
+
+NE OTOMATİK KONTROL EDİLİR?
+- CPU: 3 saniyelik tam sayı hesabı ve bilinen SHA-256 sonucu; en fazla
+  2 iş parçacığı. Hesaplama uyuşmazlığı sorun olarak raporlanır.
+- GPU: Donanımsal Direct3D 11 aygıtı açılır. 64x64 boyutlu bir doku
+  yüklenir, kopyalanır ve okunur; 16.384 bayt beklenen veriyle karşılaştırılır.
+  Yazılımsal WARP'a otomatik geri dönüş yapılmaz. Yalnızca varsayılan
+  Direct3D donanım adaptörü kontrol edilir, bütün ekran kartları değil.
+- Klavye ve fare: Yalnızca Windows PnP'de şu anda mevcut cihazlar sayılır.
+  Sürücü hata durumları ve bulunması beklenen cihazların eksikliği kontrol edilir.
+- Ses/kulaklık: Windows'un etkin ses çıkışları ve varsayılan ses çıkışı
+  kontrol edilir. Ses aygıtlarının PnP/sürücü hataları da kontrol edilir.
+
+Klavye tuşlarının, fare düğmelerinin veya kulaklığın fiziksel olarak ses
+vermesinin çalıştığını katılımsız yazılımla bütünüyle doğrulamak mümkün değildir.
+Bu işler not_testable_unattended olarak belirtilir; test edilmedikleri için
+arızalı veya sağlam sayılmaz ve tek başına sorun raporu oluşturmazlar.
+Bu sürüm sıcaklık, tüm CPU çekirdekleri, tüm GPU'lar, kapsamlı VRAM, mikrofon
+ses kalitesi veya uzun süreli kararlılık testi yapmaz. Kısa kontrolün geçmesi
+tüm donanımın sağlam olduğunu garanti etmez.
+
+SORUN TÜRLERİ
+test_failure: Hesaplama veya GPU veri karşılaştırması beklenen sonucu vermedi.
+driver_error: Mevcut cihaz Windows'ta hata durumunda veya hata koduyla göründü.
+required_device_missing: Beklenen klavye/fare ya da etkin ses çıkışı bulunamadı.
+check_unavailable: Test/sorgu açılamadı, izin hatası oldu veya süre doldu.
+  Bu test çalıştırma sorunudur; fiziksel donanım arızası teşhisi değildir.
+expected_device_not_enumerated: İsteğe bağlı beklenen ses cihazı adını Windows
+  PnP listesinde göremedi. Akustik veya fiziksel bağlantı testi değildir.
+
+AYARLAR
+Gonderici\Ayarlar.json ve Alici\Ayarlar.json dosyalarında ayarlar bulunur.
+GitHub şablonunda SharedKey boştur. Önce kök klasördeki
+Eslesmeyi-Hazirla.cmd dosyasını bir kez çalıştır; iki klasöre aynı anahtar
+yazılır. Hazırlanmış aynı klasörün alıcı ve gönderici kopyalarını kullan. Gönderici ve alıcı aynı
+paketten kurulmalı; bu anahtar alıcıya rapor gönderme yetkisini sağlar.
+HTTP yerel ağda şifrelenmeden çalışır; bu alıcı HTTPS sunucusu değildir.
+
+Varsayılan hedef: ReceiverUrl = http://192.168.1.77:8777/pc-kontrol/rapor/
+Alıcı portu: ReceiverPort = 8777
+Her gönderim için zaman sınırı: TimeoutSeconds = 5
+Bir çalışmada en fazla kuyruk işlemi: MaxPendingPerRun = 10
+Açılış beklemesi: StartupDelaySeconds = 30
+Kontrol işlemi için sınır: ChecksTimeoutSeconds = 40
+RequiredDevices.Keyboard, Mouse ve AudioOutput varsayılan true'dur.
+Klavyesiz/fare olmadan kullanılan bir PC için ilgili ayarı false yapabilirsin.
+ExpectedAudioNamePattern varsayılan boş; istersen örneğin *Kulaklık* veya
+*Headset* gir. Yalnızca PnP AudioEndpoint adını eşler; analog kulaklığın
+gerçekten takılı olduğunu veya ses çıkardığını kesin olarak doğrulamaz.
+
+Kurulumdan sonra ayarları kurulu Uygulama klasöründe düzenle. Alıcı ayarı
+değişince alıcıyı durdurup yeniden kur. Port değiştirirsen ReceiverUrl'i ve
+ReceiverPort'u birlikte değiştir; eski port kuralı için aşağıdaki kaldırma
+adımlarını kullan. Güncellemede çalışan alıcıyı önce durdur. v1.0'ın manuel
+test ekranı varsa kapat; v1.1 başlangıç kısayolunu katılımsız moda çevirir.
+
+YEREL DOSYALAR
+Gönderici: %LOCALAPPDATA%\PC-Kontrol\Son-Durum.json — yalnızca son kontrol
+tarihi ve problem sayısı; sorunsuz durumun HTTP raporu değildir.
+Gönderilemeyen sorunlar: %LOCALAPPDATA%\PC-Kontrol\Bekleyen-Raporlar
+Çalıştırma hatası: %LOCALAPPDATA%\PC-Kontrol\son-hata.txt
+Gönderim hatası: Bekleyen-Raporlar\son-gonderim-hatasi.txt
+Alıcı hatası: %LOCALAPPDATA%\PC-Kontrol-Alici\son-hata.txt
+Alıcı sorunları: Belgeler\PC-Kontrol-Gelen-Raporlar
+Belgeler OneDrive'a yönlendirilmişse mevcut Windows ayarına göre bu dosyalar
+senkronize edilebilir. Programın HTTP gönderim hedefi yukarıdaki yerel alıcıdır.
+
+Gönderici yalnızca 200 yanıtı içinde received=true ve eşleşen rapor kimliği
+geldiğinde kuyruk dosyasını siler. Aynı raporun tekrarında alıcı aynı kimlikle
+onay verir; farklı içerik aynı kimliği kullanırsa reddeder. İletişim veya
+kaydetme hatasında rapor kuyrukta kalır. Otomatik yeniden deneme sonraki
+Windows oturumunda/elle kontrol başlatınca yapılır; periyodik 5 dakika servisi
+kurulmaz. Başarılı kontrolde yeni HTTP trafiği veya sorun dosyası oluşmaz.
+
+KALDIRMA
+Göndericide otomatik başlatmayı kapat, PC Kontrol masaüstü kısayolunu ve
+%LOCALAPPDATA%\PC-Kontrol\Uygulama klasörünü sil. Kuyruğu istersen koru.
+Alıcıda Aliciyi-Durdur.cmd çalıştır, kurulu Uygulama klasörünü sil.
+Alıcının varsayılan ağ kayıtlarını kaldırmak için yönetici PowerShell'inde:
+  Remove-NetFirewallRule -Name 'PC-Kontrol-Alici-8777'
+  netsh http delete urlacl url=http://+:8777/pc-kontrol/rapor/
+Başka port kullandıysan kendi portunu yaz. Raporlar ayrıca silmedikçe kalır.
+
+DOĞRULAMA KAPSAMI
+Linux üzerinde PowerShell 7 ile gerçek HTTP gönderici ve alıcı akışları,
+kimlik doğrulama, boyut/JSON kontrolleri, sorunsuz durumun sessizliği,
+sorun sınıflandırması, yerel kuyruk, bağlantı kesilmesi/yeniden deneme,
+yanlış onayda raporun korunması, çift rapor önleme ve HTML kaçışları test edildi.
+C# çekirdeği C# 5 sözdizimiyle derlendi; gerçek CPU hesabı ve doku desenindeki
+veri bozulmasını yakalayan karşılaştırma kontrol edildi. Windows 11'in
+Direct3D/CoreAudio/PnP API'leri, UAC/ağ kurulumları ve 192.168.1.77'nin
+gerçek yerel ağ erişimi bu ortamda çalıştırılarak doğrulanmadı.
