@@ -1,5 +1,13 @@
 # PC Kontrol — Katılımsız Windows 11 kontrolü
 
+## v1.2 güncellemesi — sesli ve görünür alarm
+
+Mevcut kurulumu güncellemek için yeni ZIP'i çıkart ve `PC-Kontrol/Guncelle.cmd` dosyasını **alıcı ve gönderici bilgisayarlarda** çalıştır. Kurulu gönderim anahtarları ve ayarlar korunur; yeniden eşleştirme gerekmez. Alıcı yeniden başlatılır, göndericide yeni kontrol yapılır. Alıcıdaki `Alici/Alarm-Test.cmd` dosyası yerel ses ve ekran alarmını denetir; ağa test raporu göndermez.
+
+Yeni, kaydedilmiş sorun raporunda alıcıda bilgisayar adını ve sorunları gösteren bir pencere açılır; onaylanana kadar 15 saniyede bir ses çalar. Aynı raporun yeniden gönderimi ikinci alarm üretmez. Alarm ayrı süreçte çalışır; pencere açıkken alıcı yeni raporları almaya devam eder. Windows kullanıcı oturumunun açık olması gerekir; ses sessize alınmışsa görünür uyarı yine çıkar.
+
+Ses aygıtı COM arayüzünün kimliği düzeltildi. Klavye/fare algılamasında PnP yanında Raw Input kontrolü eklendi. Uzak oturumda fiziksel giriş cihazı doğrulanamıyorsa `check_unavailable` gösterilir. Varsayılan ses çıkışı sağlıklıysa bilerek devre dışı bırakılan isteğe bağlı ses adaptörünün yalnızca **22** kodu alarm oluşturmaz; diğer hata kodları korunur ve raporda görünür.
+
 Windows oturumu açılınca arka planda kısa CPU/GPU ve cihaz/sürücü kontrolleri yapar. **Sorun yoksa rapor göndermez.** Sorun varsa `http://192.168.1.77:8777/pc-kontrol/rapor/` adresine gönderir. Alıcı kapalıysa rapor yerelde kalır ve sonraki çalıştırmada tekrar denenir.
 
 ## İndir ve kur

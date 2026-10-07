@@ -71,7 +71,7 @@ namespace PcCheck {
             [PreserveSig] int EnumAudioEndpoints(int flow, uint mask, out IDeviceCollection devices);
             [PreserveSig] int GetDefaultAudioEndpoint(int flow, int role, out IDevice device);
         }
-        [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-C0A6A4A12E61"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         private interface IDeviceCollection {
             [PreserveSig] int GetCount(out uint count);
             [PreserveSig] int Item(uint index, out IDevice device);
@@ -95,6 +95,38 @@ namespace PcCheck {
                 return "{\"status\":\"complete\",\"activeOutputCount\":"+count+",\"defaultOutputAvailable\":"+(result>=0?"true":"false")+",\"defaultEndpointId\":"+Json.Quote(id)+",\"scope\":\"Windows active audio endpoint only; actual headset acoustics cannot be verified unattended\"}";
             } catch(Exception ex) { return "{\"status\":\"unknown\",\"detail\":"+Json.Quote(ex.Message)+"}"; }
             finally { if(output!=null)Marshal.ReleaseComObject(output);if(outputs!=null)Marshal.ReleaseComObject(outputs);if(instance!=null)Marshal.ReleaseComObject(instance); }
+        }
+
+        [StructLayout(LayoutKind.Sequential)] private struct RawDevice { public IntPtr Handle; public uint Type; }
+        [DllImport("user32.dll", SetLastError=true)] private static extern uint GetRawInputDeviceList(IntPtr list, ref uint count, uint size);
+        [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
+        public static string InputDevices() {
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT) return "{\"status\":\"unknown\",\"detail\":\"Raw Input requires Windows\"}";
+            IntPtr memory=IntPtr.Zero;
+            try {
+                uint size=(uint)Marshal.SizeOf(typeof(RawDevice));
+                for(int attempt=0;attempt<3;attempt++) {
+                    uint count=0;
+                    if(GetRawInputDeviceList(IntPtr.Zero,ref count,size)==UInt32.MaxValue) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                    if(count>4096) throw new InvalidOperationException("Unexpected Raw Input device count");
+                    if(count==0) return "{\"status\":\"complete\",\"keyboard\":0,\"mouse\":"+(GetSystemMetrics(19)!=0?1:0)+",\"remoteSession\":"+(GetSystemMetrics(0x1000)!=0?"true":"false")+"}";
+                    memory=Marshal.AllocHGlobal(checked((int)(count*size)));
+                    uint result=GetRawInputDeviceList(memory,ref count,size);
+                    if(result==UInt32.MaxValue) {
+                        int error=Marshal.GetLastWin32Error();Marshal.FreeHGlobal(memory);memory=IntPtr.Zero;
+                        if(error==122)continue;throw new System.ComponentModel.Win32Exception(error);
+                    }
+                    int keyboards=0,mice=0;
+                    for(uint i=0;i<result;i++) {
+                        RawDevice device=(RawDevice)Marshal.PtrToStructure(IntPtr.Add(memory,checked((int)(i*size))),typeof(RawDevice));
+                        if(device.Type==1)keyboards++;if(device.Type==0)mice++;
+                    }
+                    if(mice==0&&GetSystemMetrics(19)!=0)mice=1;
+                    return "{\"status\":\"complete\",\"keyboard\":"+keyboards+",\"mouse\":"+mice+",\"remoteSession\":"+(GetSystemMetrics(0x1000)!=0?"true":"false")+",\"scope\":\"Raw Input device presence, not physical switch verification\"}";
+                }
+                throw new InvalidOperationException("Raw Input devices changed repeatedly during enumeration");
+            }catch(Exception ex){return "{\"status\":\"unknown\",\"detail\":"+Json.Quote(ex.Message)+"}";}
+            finally {if(memory!=IntPtr.Zero)Marshal.FreeHGlobal(memory);}
         }
     }
 }

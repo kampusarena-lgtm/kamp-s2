@@ -8,6 +8,17 @@
     return $config
 }
 
+function Get-InputPresence($PnpDevices,$RawInput){
+    $keyboard=@($PnpDevices|Where-Object Class -eq 'Keyboard').Count
+    $mouse=@($PnpDevices|Where-Object Class -eq 'Mouse').Count
+    $presence=[ordered]@{status='complete';keyboard=$keyboard;mouse=$mouse;rawInput=$RawInput;pnpKeyboard=$keyboard;pnpMouse=$mouse}
+    if($RawInput.status -eq 'complete'){
+        $presence.keyboard=[Math]::Max($keyboard,[int]$RawInput.keyboard)
+        $presence.mouse=[Math]::Max($mouse,[int]$RawInput.mouse)
+    }
+    return [pscustomobject]$presence
+}
+
 function Get-KontrolIssues($Snapshot, $Config) {
     $issues = New-Object 'System.Collections.Generic.List[object]'
     foreach ($key in @('cpu','gpu')) {
@@ -19,15 +30,25 @@ function Get-KontrolIssues($Snapshot, $Config) {
         if ($errorText) { $issues.Add([ordered]@{component='system';kind='check_unavailable';detail=[string]$errorText}) }
     }
     foreach ($device in @($Snapshot.devices)) {
+        # A deliberately disabled optional HDMI/DP audio adapter is not a failure
+        # if Windows has another active default audio output. Other error codes remain alarms.
+        if($device.class -eq 'MEDIA' -and $null -ne $device.driverError -and [int]$device.driverError -eq 22 -and
+           $Snapshot.audio.status -eq 'complete' -and $Snapshot.audio.defaultOutputAvailable -and
+           $Config.IgnoreDisabledOptionalAudio -ne $false){continue}
         $driverError = $null -ne $device.driverError -and [int]$device.driverError -ne 0
         if ($driverError -or $device.status -in @('Error','Degraded')) {
-            $issues.Add([ordered]@{component=[string]$device.class;kind='driver_error';detail=[string]$device.name;instanceId=[string]$device.id;driverError=$device.driverError;deviceStatus=$device.status})
+            $issues.Add([ordered]@{component=[string]$device.class;kind='driver_error';detail=([string]$device.name+'; Windows error code: '+[string]$device.driverError+'; status: '+[string]$device.status);instanceId=[string]$device.id;driverError=$device.driverError;deviceStatus=$device.status})
         }
     }
     if ($Snapshot.presence.status -eq 'complete') {
         foreach ($item in @(@{key='keyboard';required=$Config.RequiredDevices.Keyboard}, @{key='mouse';required=$Config.RequiredDevices.Mouse})) {
             if ($item.required -and [int]$Snapshot.presence.($item.key) -eq 0) {
-                $issues.Add([ordered]@{component=$item.key;kind='required_device_missing';detail='No currently present Windows PnP device found.'})
+                $raw=$Snapshot.presence.rawInput
+                if($raw -and ($raw.status -ne 'complete' -or $raw.remoteSession)){
+                    $issues.Add([ordered]@{component=$item.key;kind='check_unavailable';detail='PnP did not find this input device; Raw Input could not confirm physical presence, or the check ran in a remote session.'})
+                }else{
+                    $issues.Add([ordered]@{component=$item.key;kind='required_device_missing';detail='No device found by available PnP/Raw Input presence checks.'})
+                }
             }
         }
     }
@@ -58,7 +79,7 @@ function Add-KontrolProblem([string]$Outbox, $Snapshot, $Config, [string]$Comput
     New-Item -ItemType Directory -Path $Outbox -Force | Out-Null
     $id = [Guid]::NewGuid().ToString('D')
     $report = [ordered]@{
-        schemaVersion=2; appVersion='1.1.0'; id=$id; computerName=$ComputerName
+        schemaVersion=2; appVersion='1.2.0'; id=$id; computerName=$ComputerName
         occurredAtUtc=[DateTime]::UtcNow.ToString('o'); hasProblems=$true; issues=$issues
         checks=$Snapshot
         limitations=@('No physical keyboard switch, mouse button or headset acoustic verification without user input.','Short CPU and default D3D11 adapter texture checks; no temperature or exhaustive stress test.')

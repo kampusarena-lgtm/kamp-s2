@@ -1,4 +1,4 @@
-PC KONTROL v1.1 — Katılımsız kontrol ve yalnızca sorun raporu
+PC KONTROL v1.2 — Katılımsız kontrol ve yalnızca sorun raporu
 ==========================================================
 
 ÇALIŞMA KURALI
@@ -133,3 +133,21 @@ C# çekirdeği C# 5 sözdizimiyle derlendi; gerçek CPU hesabı ve doku desenind
 veri bozulmasını yakalayan karşılaştırma kontrol edildi. Windows 11'in
 Direct3D/CoreAudio/PnP API'leri, UAC/ağ kurulumları ve 192.168.1.77'nin
 gerçek yerel ağ erişimi bu ortamda çalıştırılarak doğrulanmadı.
+
+
+v1.2 GÜNCELLEME VE ALARM
+Yeni ZIP içindeki PC-Kontrol/Guncelle.cmd dosyasını alıcı ve göndericilerde
+çalıştır. Mevcut gönderim anahtarı/ayarlar korunur; yeniden eşleştirme yapma.
+Yeni sorun raporunda alıcıda sesli ve görünür alarm açılır. Onaylanana kadar
+15 saniyede bir tekrar çalar; yeni raporları aynı pencerede listeler.
+Aynı raporun HTTP tekrarı yeni alarm üretmez. Alarm, alımı engellemez.
+Alici/Alarm-Test.cmd yerel deneme alarmı oluşturur; HTTP gönderimi yapmaz.
+AlarmEnabled=false alarmı kapatır; AlarmSoundEnabled=false yalnızca sesi kapatır.
+Eski ayarlarda bu alanlar yoksa varsayılan açık kabul edilir.
+Windows oturumu kapalı/kilitliyse görünür pencereyi masaüstünde göremezsin;
+oturum açıp yerel test yap. Windows sesi sessizse alarm sesi duyulmayabilir.
+Ses COM kimliği düzeltildi. Klavye/fare PnP yanında Raw Input ile kontrol edilir.
+Raw Input/uzak oturum kaynaklı belirsizlikte fiziksel cihaz eksikliği iddia edilmez.
+IgnoreDisabledOptionalAudio=false devre dışı isteğe bağlı ses adaptörünün
+22 kodunu da raporlar; varsayılan true yalnızca sağlıklı başka varsayılan
+ses çıkışı varken bu özel kodu yoksayar. Diğer sürücü hataları raporlanır.

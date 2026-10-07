@@ -11,5 +11,8 @@
     "AudioOutput": true
   },
   "ExpectedAudioNamePattern": "",
-  "ChecksTimeoutSeconds": 40
+  "ChecksTimeoutSeconds": 40,
+  "AlarmEnabled": true,
+  "AlarmSoundEnabled": true,
+  "IgnoreDisabledOptionalAudio": true
 }
