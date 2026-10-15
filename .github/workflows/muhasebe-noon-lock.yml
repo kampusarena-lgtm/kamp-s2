@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'muhasebe-v10_6_3/**'
+      - 'KampusArena_V10_6_3_VERI_KORUYAN_GUNCELLEME.zip'
       - '.github/workflows/muhasebe-noon-lock.yml'
   workflow_dispatch:
 permissions:
@@ -20,3 +21,4 @@ jobs:
       - run: python muhasebe-v10_6_3/test_noon_lock.py
 
       - run: python muhasebe-v10_6_3/app/tests/test_application.py
+      - run: python muhasebe-v10_6_3/test_release_package.py
