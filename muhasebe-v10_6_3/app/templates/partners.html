@@ -1,0 +1,247 @@
+
+{% extends "base.html" %}
+{% block title %}Ortaklar / Kâr Dağıtımı{% endblock %}
+{% block content %}
+
+<div class="toolbar">
+  <div>
+    <h1 style="margin:0">Ortaklar ve Kâr Dağıtımı</h1>
+    <div class="muted">Şahsi kart alacakları, kâr payı alacakları ve NAKİT tahsilatlar ayrı takip edilir.</div>
+  </div>
+</div>
+
+<div class="kpis" style="grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:15px">
+  <div class="kpi"><span class="muted">Toplam Pay</span><b class="{{'amount-good' if (total_share-100)|abs<0.01 else 'amount-bad'}}">{{"%.2f"|format(total_share)}}%</b></div>
+  <div class="kpi"><span class="muted">Bekleyen Şahsi Kart</span><b class="{{'amount-bad' if total_expense_claim_left>0 else 'amount-good'}}">{{"%.2f"|format(total_expense_claim_left)}} TL</b></div>
+  <div class="kpi"><span class="muted">Kâr Payı Alacağı</span><b class="{{'amount-bad' if total_profit_claim_left>0 else 'amount-good'}}">{{"%.2f"|format(total_profit_claim_left)}} TL</b></div>
+  <div class="kpi"><span class="muted">TOPLAM ORTAKLARA BORÇ</span><b class="{{'amount-bad' if total_claim_left>0 else 'amount-good'}}">{{"%.2f"|format(total_claim_left)}} TL</b></div>
+  <div class="kpi"><span class="muted">Alacak Ödenen</span><b>{{"%.2f"|format(total_claim_paid)}} TL</b></div>
+  <div class="kpi"><span class="muted">Diğer Para Çıkışı</span><b>{{"%.2f"|format(total_out)}} TL</b></div>
+</div>
+
+<div class="notice warnbox" style="margin-bottom:16px">
+  <b>V10.5 mantığı:</b> Ortağın şahsi kartla yaptığı alım burada <b>Bekleyen Şahsi Kart</b> olarak görünür ve Giderler'e henüz girmez.
+  Ortağa alacak ödemesi <b>yalnız NAKİT</b> yapılır. Kısmi ödeme varsa yalnız ödenen kısım, ilk alımın kategorisiyle Giderler'e geçer.
+  Kâr payı ödemesi de NAKİT çıkıştır fakat ekonomik gider değildir.
+</div>
+
+<div class="card" style="margin-bottom:16px;border:2px solid #7c3aed">
+  <div class="toolbar">
+    <div>
+      <h2 style="margin:0">💰 Otomatik Kâr Dağıtım Merkezi</h2>
+      <div class="muted">Hesap otomatik, kesinleştirme tek tuş. Kesinleşince ortaklara kâr payı alacağı yazılır.</div>
+    </div>
+    <form method="get" class="toolbar push">
+      <div><label>Dönem</label><input type="month" name="profit_month" value="{{profit_preview.month}}" required></div>
+      <div><label>İşletmede Bırakılacak</label><input type="number" step="0.01" min="0" name="reserve" value="{{profit_preview.reserve_amount if not profit_preview.error else 0}}"></div>
+      <button class="btn btn-purple">Dağılımı Hesapla</button>
+    </form>
+  </div>
+
+  {% if profit_preview.error %}
+    <div class="flash danger">{{profit_preview.error}}</div>
+  {% else %}
+    <div class="kpis" style="grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:14px">
+      <div class="kpi"><span class="muted">Faaliyet Sonucu</span><b class="{{'amount-good' if profit_preview.operating_profit>=0 else 'amount-bad'}}">{{"%.2f"|format(profit_preview.operating_profit)}} TL</b></div>
+      <div class="kpi"><span class="muted">Devreden Zarar</span><b class="{{'amount-bad' if profit_preview.carry_loss_in>0 else 'amount-good'}}">{{"%.2f"|format(profit_preview.carry_loss_in)}} TL</b></div>
+      <div class="kpi"><span class="muted">Düzeltilmiş Kâr</span><b class="{{'amount-good' if profit_preview.adjusted_profit>=0 else 'amount-bad'}}">{{"%.2f"|format(profit_preview.adjusted_profit)}} TL</b></div>
+      <div class="kpi"><span class="muted">İşletmede Kalacak</span><b>{{"%.2f"|format(profit_preview.reserve_amount)}} TL</b></div>
+      <div class="kpi" style="border:2px solid #16a34a"><span class="muted">DAĞITILABİLİR KÂR</span><b class="amount-good">{{"%.2f"|format(profit_preview.distributable_profit)}} TL</b></div>
+      <div class="kpi"><span class="muted">Sonraki Aya Zarar</span><b class="{{'amount-bad' if profit_preview.carry_loss_out>0 else 'amount-good'}}">{{"%.2f"|format(profit_preview.carry_loss_out)}} TL</b></div>
+    </div>
+    <div class="notice warnbox" style="margin-bottom:14px">
+      <b>Şahsi Kart Koruması:</b> Önceki koruma <b>{{"%.2f"|format(profit_preview.card_protection_in)}} TL</b> ·
+      Dönem sonu bekleyen <b>{{"%.2f"|format(profit_preview.card_protection_out)}} TL</b> ·
+      Kâra etkisi <b>{{"%.2f"|format(profit_preview.card_protection_change)}} TL</b>.
+      Aynı bekleyen borç her ay tekrar düşülmez; yalnız koruma değişimi dağıtılabilir kârı etkiler.
+    </div>
+
+    <div class="grid" style="margin-bottom:14px">
+      <div class="notice {{'goodbox' if (profit_preview.total_share-100)|abs<0.01 else 'warnbox'}}">
+        Ortak payları: <b>%{{"%.2f"|format(profit_preview.total_share)}}</b>
+        {% if (profit_preview.total_share-100)|abs>=0.01 %} · Dağıtım için %100 olmalı.{% endif %}
+      </div>
+      <div class="notice {{'goodbox' if profit_preview.waiting==0 and not profit_preview.open_days and profit_preview.month_finished else 'warnbox'}}">
+        PanCafe bekleyen: <b>{{profit_preview.waiting}}</b> ·
+        Açık gün sonu: <b>{{profit_preview.open_days|length}}</b> ·
+        Ay durumu: <b>{{'TAMAMLANDI' if profit_preview.month_finished else 'DEVAM EDİYOR'}}</b>
+      </div>
+    </div>
+
+    {% if profit_preview.existing %}
+      <div class="flash warning">
+        Bu dönem zaten <b>{{profit_preview.existing.created_at}}</b> tarihinde
+        <b>{{profit_preview.existing.created_by}}</b> tarafından kesinleştirilmiş.
+        Dağıtılan: <b>{{"%.2f"|format(profit_preview.existing.distributable_profit)}} TL</b>
+      </div>
+    {% endif %}
+
+    {% if profit_preview.open_days %}
+      <div class="notice warnbox" style="margin-bottom:12px">
+        <b>Açık gün sonları:</b> {{profit_preview.open_days[:12]|join(', ')}}
+        {% if profit_preview.open_days|length > 12 %} ...{% endif %}
+      </div>
+    {% endif %}
+
+    <div class="tablewrap" style="margin-bottom:14px">
+      <table>
+        <tr><th>Ortak</th><th>Pay</th><th>Otomatik Kâr Payı</th></tr>
+        {% for x in profit_preview.lines %}
+        <tr>
+          <td>{{x.name}}</td>
+          <td>{{"%.2f"|format(x.share_percent)}}%</td>
+          <td class="amount-good">{{"%.2f"|format(x.amount)}} TL</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    {% if session.get('admin_owner') %}
+      <form method="post" action="/admin/partners/profit-distribute" onsubmit="return confirm('Bu kâr dağıtımı kesinleşecek ve ortaklara alacak yazılacak. Devam?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="profit_month" value="{{profit_preview.month}}">
+        <input type="hidden" name="reserve" value="{{profit_preview.reserve_amount}}">
+        <label>Dağıtım Notu</label>
+        <input name="note" placeholder="Örn: Eylül 2026 dönem kârı">
+        {% if profit_preview.ready %}
+          <button class="btn btn-green" style="margin-top:12px">✅ KÂR DAĞITIMINI KESİNLEŞTİR</button>
+        {% else %}
+          <button class="btn" style="margin-top:12px" disabled>Dağıtım şartları tamamlanmadı</button>
+        {% endif %}
+      </form>
+    {% else %}
+      <div class="notice">Kâr dağıtımını yalnız <b>Ana Yönetici</b> kesinleştirebilir.</div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Ortak Ekle</h2>
+    <form method="post" action="/admin/partners/add"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Ortak Adı</label><input name="name" required>
+      <label>Pay (%)</label><input type="number" step="0.01" min="0" max="100" name="share" required>
+      <label>Not</label><textarea name="note"></textarea>
+      <button class="btn btn-green" style="margin-top:12px">Ortak Ekle</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Ortak Hareketi / Ödeme</h2>
+    {% if partners %}
+    <form method="post" action="/admin/partners/movement/add"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="formgrid">
+        <div><label>Tarih</label><input type="date" name="date" value="{{today}}" required></div>
+        <div><label>Ortak</label><select name="partner_id">{% for p in partners %}<option value="{{p.id}}">{{p.name}}</option>{% endfor %}</select></div>
+        <div><label>Tür</label><select name="type" id="pmt" onchange="togPM()">{% for t in movement_types %}<option>{{t}}</option>{% endfor %}</select></div>
+        <div><label>Tutar</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+        <div id="pmw" style="display:none"><label>Ödeme Yöntemi</label><input id="pmm" name="payment_method" value="NAKİT" readonly></div>
+        <div id="ptw" style="display:none">
+          <label>Neye Mahsup Edilsin?</label>
+          <select name="payment_target" id="ptm">
+            <option value="AUTO">Otomatik · En Eski Borçtan</option>
+            <option value="MASRAF">Bekleyen Şahsi Karttan</option>
+            <option value="KAR_PAYI">Kâr Payı Alacağından</option>
+          </select>
+        </div>
+        <div class="wide"><label>Açıklama</label><textarea name="note"></textarea></div>
+        <div class="wide"><button class="btn btn-purple">Hareket Ekle</button></div>
+      </div>
+    </form>
+    {% else %}<div class="notice">Önce ortak ekleyin.</div>{% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h2>Ortak Bakiye Özeti</h2>
+  <div class="tablewrap"><table>
+    <tr>
+      <th>ID</th><th>Ortak</th><th>Pay</th><th>Bekleyen Şahsi Kart</th><th>Kâr Payı Alacağı</th>
+      <th>Diğer Alacak</th><th>TOPLAM ORTAĞA BORÇ</th><th>Ödenen</th><th>Para Çıkışı</th><th>Not</th><th>İşlem</th>
+    </tr>
+    {% for p in partners %}
+    <tr>
+      <td>{{p.id}}</td><td>{{p.name}}</td><td>{{"%.2f"|format(p.share_percent)}}%</td>
+      <td>{{"%.2f"|format(p.expense_claim_left)}} TL</td>
+      <td>{{"%.2f"|format(p.profit_claim_left)}} TL</td>
+      <td>{{"%.2f"|format(p.other_claim_left)}} TL</td>
+      <td class="{{'amount-bad' if p.claim_left>0 else 'amount-good'}}"><b>{{"%.2f"|format(p.claim_left)}} TL</b></td>
+      <td>{{"%.2f"|format(p.claim_paid)}} TL</td>
+      <td>{{"%.2f"|format(p.out)}} TL</td>
+      <td>{{p.note}}</td>
+      <td><div class="actions">
+        <a class="btn btn-sm btn-primary" href="/admin/partners/edit/{{p.id}}">Düzenle</a>
+        <form method="post" action="/admin/partners/cancel/{{p.id}}" onsubmit="return cancelForm(this,'Ortak iptal nedeni:')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="reason"><button class="btn btn-sm btn-red">İptal Et</button>
+        </form>
+      </div></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h2>Kâr Dağıtım Geçmişi</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Dönem</th><th>Faaliyet Kârı</th><th>Devreden Zarar</th><th>Kart Koruma</th><th>İşletmede Bırakılan</th><th>Dağıtılan</th><th>Sonraki Aya Zarar</th><th>Kesinleştiren</th><th>Zaman</th><th>Not</th></tr>
+    {% for d in profit_history %}
+    <tr>
+      <td>{{d.period_month}}</td>
+      <td>{{"%.2f"|format(d.operating_profit)}} TL</td>
+      <td>{{"%.2f"|format(d.carry_loss_in)}} TL</td>
+      <td>{{"%.2f"|format(d.card_protection_out or 0)}} TL</td>
+      <td>{{"%.2f"|format(d.reserve_amount)}} TL</td>
+      <td class="amount-good">{{"%.2f"|format(d.distributable_profit)}} TL</td>
+      <td class="{{'amount-bad' if d.carry_loss_out>0 else 'amount-good'}}">{{"%.2f"|format(d.carry_loss_out)}} TL</td>
+      <td>{{d.created_by}}</td><td>{{d.created_at}}</td><td>{{d.note}}</td>
+    </tr>
+    {% endfor %}
+    {% if not profit_history %}<tr><td colspan="10" class="muted">Henüz kesinleşmiş kâr dağıtımı yok.</td></tr>{% endif %}
+  </table></div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h2>Ortak Hareketleri</h2>
+  <div class="tablewrap"><table>
+    <tr><th>ID</th><th>Tarih</th><th>Ortak</th><th>Tür</th><th>Kategori</th><th>Tutar</th><th>Yöntem</th><th>Mahsup</th><th>Kaynak</th><th>Açıklama</th><th>İşlem</th></tr>
+    {% for r in movements %}
+    <tr>
+      <td>{{r.id}}</td><td>{{r.tx_date}}</td><td>{{r.partner_name}}</td>
+      <td><span class="tag {{'bad' if r.movement_type=='ALACAK EKLE' else ('ok' if r.movement_type=='ALACAK ÖDEME' else 'warn')}}">{{r.movement_type}}</span></td>
+      <td>{{r.claim_category or '-'}}</td>
+      <td>{{"%.2f"|format(r.amount)}} TL</td><td>{{r.payment_method}}</td>
+      <td>{% if r.movement_type=='ALACAK ÖDEME' %}{{r.payment_target or 'AUTO'}}{% else %}-{% endif %}</td>
+      <td>
+        {% if r.source_type=='PERSONAL_CARD_CLAIM' %}<span class="tag purple">ŞAHSİ KART</span>
+        {% elif r.source_type=='EXPENSE' %}<span class="tag purple">ESKİ ŞAHSİ KART</span>
+        {% elif r.source_type=='PROFIT_DISTRIBUTION' %}<span class="tag cyan">KÂR PAYI</span>
+        {% else %}<span class="tag gray">MANUEL</span>{% endif %}
+      </td>
+      <td>{{r.note}}</td>
+      <td>
+        {% if r.source_type=='PROFIT_DISTRIBUTION' %}
+          <span class="tag cyan">KESİNLEŞMİŞ</span>
+        {% else %}
+          <div class="actions">
+            <a class="btn btn-sm btn-primary" href="/admin/partners/movement/edit/{{r.id}}">Düzenle</a>
+            <form method="post" action="/admin/partners/movement/cancel/{{r.id}}" onsubmit="return cancelForm(this,'Ortak hareketi iptal nedeni:')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="reason"><button class="btn btn-sm btn-red">İptal Et</button>
+            </form>
+          </div>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+
+<script>
+function togPM(){
+  const y=document.getElementById('pmt').value==='ALACAK ÖDEME';
+  document.getElementById('pmw').style.display=y?'block':'none';
+  document.getElementById('ptw').style.display=y?'block':'none';
+  document.getElementById('pmm').required=y;
+  if(y){document.getElementById('pmm').value='NAKİT'}else{document.getElementById('ptm').value='AUTO'}
+}
+togPM();
+</script>
+{% endblock %}

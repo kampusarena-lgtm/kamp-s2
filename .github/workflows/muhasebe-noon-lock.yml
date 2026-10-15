@@ -1,0 +1,20 @@
+name: Muhasebe 12:00 kilit kontrolleri
+on:
+  push:
+    paths:
+      - 'muhasebe-v10_6_3/**'
+      - '.github/workflows/muhasebe-noon-lock.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  noon-lock-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r muhasebe-v10_6_3/app/requirements.txt
+      - run: python muhasebe-v10_6_3/test_noon_lock.py

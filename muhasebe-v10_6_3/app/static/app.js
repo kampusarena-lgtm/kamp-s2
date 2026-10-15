@@ -1,0 +1,9 @@
+function cancelForm(form,msg){const reason=prompt(msg||'İptal nedenini yazın:');if(!reason||!reason.trim())return false;form.querySelector('input[name="reason"]').value=reason.trim();return confirm('Kayıt iptal edilecek ve işlem geçmişinde saklanacak. Devam edilsin mi?');}
+const menuButton=document.querySelector('.menu-toggle'),sidebar=document.getElementById('sidebar');
+function closeMenu(){sidebar.classList.remove('is-open');menuButton?.setAttribute('aria-expanded','false');}
+menuButton?.addEventListener('click',()=>{const open=sidebar.classList.toggle('is-open');menuButton.setAttribute('aria-expanded',String(open));});
+document.addEventListener('click',e=>{if(sidebar.classList.contains('is-open')&&!sidebar.contains(e.target)&&!menuButton.contains(e.target))closeMenu();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
+document.addEventListener('submit',e=>{const form=e.target;if(form.method.toLowerCase()!=='post'||e.defaultPrevented)return;if(form.dataset.submitting){e.preventDefault();return;}form.dataset.submitting='true';form.querySelectorAll('button[type="submit"],button:not([type])').forEach(b=>{b.classList.add('busy');b.setAttribute('aria-disabled','true');});});
+window.addEventListener('pageshow',()=>document.querySelectorAll('form').forEach(f=>{delete f.dataset.submitting;f.querySelectorAll('.busy').forEach(b=>{b.classList.remove('busy');b.removeAttribute('aria-disabled');});}));
+document.querySelectorAll('input,select,textarea').forEach((field,i)=>{if(field.type==='hidden')return;if(!field.id)field.id='field-'+i;const previous=field.previousElementSibling;const label=previous?.tagName==='LABEL'?previous:field.closest('div')?.querySelector('label');if(label?.tagName==='LABEL'&&!label.hasAttribute('for'))label.setAttribute('for',field.id);});

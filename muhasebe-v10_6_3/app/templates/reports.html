@@ -1,0 +1,66 @@
+
+{% extends "base.html" %}
+{% block title %}Kâr-Zarar / Rapor{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div><h1 style="margin:0">Kâr-Zarar ve Raporlar</h1><div class="muted">Kâr ile nakit çıkışı ayrı izlenir; ortaklara dağıtılan kâr ekonomik gider değildir.</div></div>
+  <form class="toolbar push" method="get">
+    <div><label>Başlangıç</label><input type="date" name="start" value="{{start}}"></div>
+    <div><label>Bitiş</label><input type="date" name="end" value="{{end}}"></div>
+    <button class="btn btn-primary">Hesapla</button>
+  </form>
+</div>
+
+<div class="kpis" style="grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:15px">
+  <div class="kpi"><span class="muted">PanCafe Ciro</span><b>{{"%.2f"|format(p.revenue)}} TL</b></div>
+  <div class="kpi"><span class="muted">Gerçekleşen Gider</span><b>{{"%.2f"|format(p.economic_expense)}} TL</b></div>
+  <div class="kpi"><span class="muted">FAALİYET SONUCU</span><b class="{{'amount-good' if p.operating_profit>=0 else 'amount-bad'}}">{{"%.2f"|format(p.operating_profit)}} TL</b></div>
+  <div class="kpi"><span class="muted">Dağıtılan Kâr</span><b class="amount-good">{{"%.2f"|format(p.distributed_profit)}} TL</b></div>
+  <div class="kpi"><span class="muted">İşletmede Bırakılan</span><b>{{"%.2f"|format(p.profit_reserve)}} TL</b></div>
+  <div class="kpi"><span class="muted">Ortaklara Borç</span><b class="{{'amount-bad' if p.partner_debt>0 else 'amount-good'}}">{{"%.2f"|format(p.partner_debt)}} TL</b></div>
+</div>
+
+<div class="kpis" style="grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:15px">
+  <div class="kpi"><span class="muted">Tahsilat</span><b>{{"%.2f"|format(p.collections)}} TL</b></div>
+  <div class="kpi"><span class="muted">Direkt İşletme Gideri</span><b>{{"%.2f"|format(p.business_paid)}} TL</b></div>
+  <div class="kpi"><span class="muted">Ortağa NAKİT Alacak Ödemesi</span><b>{{"%.2f"|format(p.partner_paid)}} TL</b></div>
+  <div class="kpi"><span class="muted">Ortak Para Çıkışı</span><b>{{"%.2f"|format(p.partner_withdrawals)}} TL</b></div>
+  <div class="kpi"><span class="muted">NET NAKİT</span><b class="{{'amount-good' if p.net_cash>=0 else 'amount-bad'}}">{{"%.2f"|format(p.net_cash)}} TL</b></div>
+  <div class="kpi"><span class="muted">PanCafe Bekleyen</span><b class="{{'amount-warn' if p.waiting else 'amount-good'}}">{{p.waiting}}</b></div>
+</div>
+
+<div class="notice" style="margin-bottom:15px">
+  <b>V10.5 kâr mantığı:</b> Faaliyet sonucu = PanCafe Ciro − Gerçekleşen Gider.
+  Şahsi kart alımı, ortağa NAKİT ödenene kadar giderleşmez; ödenen kısım kendi kategorisiyle giderleşir.
+  Bekleyen şahsi kart tutarı kâr dağıtımında koruma altına alınır. Kâr payı ödemesi ise nakit çıkışıdır ama ekonomik gider değildir.
+  <br><b>Dönem sonu bekleyen şahsi kart:</b> {{"%.2f"|format(p.pending_card_debt)}} TL
+</div>
+
+<div class="grid">
+  <div class="card"><h2>Aylık Özet</h2><div class="tablewrap"><table>
+    <tr><th>Ay</th><th>Ciro</th><th>Gerçekleşen Gider</th><th>Faaliyet Sonucu</th><th>Dağıtılan Kâr</th><th>İşletmede Bırakılan</th><th>Devreden Zarar</th><th>Genel Para Çıkışı</th><th>Net Nakit</th></tr>
+    {% for x in monthly %}
+    <tr>
+      <td>{{x.month}}</td><td>{{"%.2f"|format(x.revenue)}}</td><td>{{"%.2f"|format(x.economic_expense)}}</td>
+      <td class="{{'amount-good' if x.operating_profit>=0 else 'amount-bad'}}">{{"%.2f"|format(x.operating_profit)}}</td>
+      <td>{{"%.2f"|format(x.distributed_profit)}}</td><td>{{"%.2f"|format(x.profit_reserve)}}</td>
+      <td>{{"%.2f"|format(x.profit_carry_out)}}</td><td>{{"%.2f"|format(x.general_cash_out)}}</td><td>{{"%.2f"|format(x.net_cash)}}</td>
+    </tr>{% endfor %}
+  </table></div></div>
+
+  <div class="card"><h2>Gider Kategorileri</h2><div class="tablewrap"><table>
+    <tr><th>Kategori</th><th>Tutar</th></tr>
+    {% for x in p.by_category %}<tr><td>{{x.category}}</td><td>{{"%.2f"|format(x.total)}} TL</td></tr>{% endfor %}
+  </table></div></div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h2>Excel Veri Çek</h2>
+  <p class="muted">Aynı tarih aralığını ayrı sayfalara böler: <b>KASA, GIDERLER, VERESIYE, ORTAK_HAREKETLERI, KAR_DAGITIMI, KAR_ZARAR, AUDIT</b>.</p>
+  <form method="post" action="/admin/export" class="toolbar"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div><label>Başlangıç</label><input type="date" name="start" value="{{start}}" required></div>
+    <div><label>Bitiş</label><input type="date" name="end" value="{{end}}" required></div>
+    <button class="btn btn-green">📤 Excel Raporunu İndir</button>
+  </form>
+</div>
+{% endblock %}

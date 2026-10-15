@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block title %}Mesai Giriş-Çıkış{% endblock %}{% block content %}
+<div style="max-width:760px;margin:0 auto"><div class="toolbar"><div><h1 style="margin:0">⏱ Mesai Giriş / Çıkış</h1><div class="muted">Adını ve vardiyanı seç. Saat farklıysa yalnız gerçek saati değiştir.</div></div><div class="push"><a class="btn" href="/">← Personel İşlemleri</a></div></div>
+<div class="card" style="border:2px solid #0891b2"><form method="post" action="/personel/mesai/kaydet" onsubmit="return checkP()"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label>Personel</label><select name="personel" id="personel" required onchange="personChanged()"><option value="">— Adını Seç —</option>{% for p in personnel %}<option value="{{p.name}}" data-id="{{p.id}}">{{p.name}}</option>{% endfor %}</select>
+<div class="formgrid"><div><label>Çalışma Tarihi</label><input type="date" name="tarih" value="{{today}}" required></div><div><label>Vardiya</label><select name="vardiya" id="vardiya" required onchange="shiftChanged()"><option value="">— Vardiya Seç —</option>{% for code,s in shifts.items() %}<option value="{{code}}" data-start="{{s.start}}" data-end="{{s.end}}">{{s.label}}</option>{% endfor %}</select></div><div></div><div><label>Gerçek Giriş</label><input type="time" name="gercek_giris" id="giris" required></div><div><label>Gerçek Çıkış</label><input type="time" name="gercek_cikis" id="cikis" required></div><div></div></div>
+<label>Açıklama <span class="muted">(isteğe bağlı)</span></label><input name="aciklama" placeholder="Örn: İzin günü desteği / erken çıkış nedeni">
+<button class="btn btn-cyan" style="width:100%;margin-top:16px;padding:13px">MESAİYİ KAYDET</button></form>
+<div class="notice goodbox" style="margin-top:15px"><b>Sabit vardiyalar:</b> 09:00–19:00 · 13:00–21:00 · 19:00–05:00 · 21:00–09:00.<br>Gece vardiyasında çıkış saati otomatik olarak ertesi gün kabul edilir. Aynı tarih için tekrar kaydedersen eski kayıt güncellenir.</div></div></div>
+<script>
+const defaults={{defaults|tojson}};
+function shiftChanged(){const s=document.getElementById('vardiya');const o=s.options[s.selectedIndex];if(!o||!o.value)return;document.getElementById('giris').value=o.dataset.start||'';document.getElementById('cikis').value=o.dataset.end||'';}
+function personChanged(){const s=document.getElementById('personel');const o=s.options[s.selectedIndex];const d=o?.dataset?.id?defaults[o.dataset.id]:'';if(d){document.getElementById('vardiya').value=d;shiftChanged();}}
+function checkP(){if(!document.getElementById('personel').value){alert('Önce adını seç.');return false}if(!document.getElementById('vardiya').value){alert('Vardiyanı seç.');return false}return true;}
+</script>{% endblock %}

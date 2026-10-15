@@ -1,0 +1,151 @@
+
+{% extends "base.html" %}
+{% block title %}Otomatik Gün Kilidi{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 style="margin:0">Gün kilidi</h1>
+    <div class="muted">Muhasebe günü 09:00–09:00 çalışır. PanCafe dönemi aynı kalır; kayıt girişi kapanış günü 12:00’ye kadar sürer.</div>
+  </div>
+  <form class="toolbar push">
+    <div><label>Tarih</label><input type="date" name="date" value="{{tx_date}}"></div>
+    <button class="btn btn-primary">Göster</button>
+  </form>
+</div>
+
+<div class="notice" style="margin-bottom:16px">
+  <b>Kural:</b> Bugünün tarihi <b>{{today}}</b> her zaman açıktır.
+  Kasa <b>09:00’da</b> kapanır. Kapanan günün kayıtları aynı gün <b>12:00’ye kadar</b> girilebilir; ardından otomatik kilitlenir. Önceden kilitlenmiş geçmiş günler açılmaz.
+  Manuel <b>“Günü Kapat”</b> işlemi kaldırıldı.
+</div>
+
+<div class="kpis" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:16px">
+  <div class="kpi">
+    <span class="muted">Seçilen Gün</span>
+    <b>{{tx_date}}</b>
+  </div>
+  <div class="kpi">
+    <span class="muted">Durum</span>
+    <b class="{{'amount-good' if status.is_today or status.reopened_today else ('amount-bad' if status.is_closed else 'amount-warn')}}">
+      {{status.auto_state}}
+    </b>
+  </div>
+  <div class="kpi">
+    <span class="muted">PanCafe Bekleyen</span>
+    <b class="{{'amount-bad' if waiting else 'amount-good'}}">{{waiting}}</b>
+  </div>
+  <div class="kpi"><span class="muted">Kasa / Gider</span><b>{{counts.cash}} / {{counts.expense}}</b></div>
+  <div class="kpi"><span class="muted">Veresiye / Ortak</span><b>{{counts.credit}} / {{counts.partner}}</b></div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Otomatik Kapanış Durumu</h2>
+
+    {% if status.is_today %}
+      <div class="flash success">
+        <b>BUGÜN AÇIK.</b><br>
+        Bugün boyunca personel ve yöneticiler normal işlem yapabilir.
+        Yarın bu tarih D-1 olacağı için otomatik kilitlenecek.
+      </div>
+
+    {% elif status.entry_grace %}
+      <div class="flash success"><b>12:00’YE KADAR KAYIT AÇIK.</b><br>Kasa 09:00’da tamamlandı. Bu güne ait kayıtları bugün 12:00’ye kadar girebilir veya düzeltebilirsiniz. PanCafe dönemi 09:00–09:00 olarak kalır.</div>
+
+    {% elif status.reopened_today %}
+      <div class="flash warning">
+        <b>GEÇİCİ AÇIK.</b><br>
+        Ana Yönetici bu tarihi düzeltme için bugün yeniden açmış.
+        Bugün düzeltme yapılabilir; yarın sistem yeniden otomatik kilitler.
+      </div>
+
+    {% elif status.is_closed or (status.is_past and not waiting) %}
+      <div class="flash success">
+        <b>OTOMATİK KAPALI.</b><br>
+        Kapatma: {{status.closed_at or 'İşlemsiz gün / fiziksel kapanış kaydı gerekmez'}} · {{status.closed_by or 'OTOMATİK'}}<br>
+        {{status.close_note or 'D-1 otomatik gün kilidi. Bu tarih yeni işlem kabul etmez.'}}
+      </div>
+
+    {% elif waiting %}
+      <div class="flash warning">
+        <b>AUTOMATİK KAPANIŞ PANCAFE BEKLİYOR.</b><br>
+        {{waiting}} kasa kaydında PanCafe Kasa eksik.
+        Bu geçmiş günde normal kayıt/düzenleme işlemleri kilitlidir.
+        Sistem PanCafe GENEL TOPLAM değerini otomatik almaya çalışır.
+        Başarılı olunca gün otomatik kapanır.
+      </div>
+      <a class="btn btn-purple" href="/admin/cash?month={{tx_date[:7]}}">PanCafe Otomatik Durumuna Git</a>
+
+    {% else %}
+      <div class="notice warnbox">
+        Bu tarih geçmiş gün. Sistem ilk kontrolünde otomatik kilitleyecek.
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Düzeltme İçin Geçici Açma</h2>
+    {% if status.is_past and not status.reopened_today and not status.entry_grace and session.get('admin_owner') %}
+      <div class="notice warnbox">
+        Yalnız <b>Ana Yönetici</b> geçmiş bir günü düzeltme için açabilir.
+        Açılan gün <b>yalnız bugün boyunca</b> açık kalır; ertesi gün tekrar otomatik kapanır.
+        İşlem geçmişine yazılır.
+      </div>
+      <form method="post" action="/admin/day-close/reopen"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{tx_date}}">
+        <label>Açma Nedeni</label>
+        <textarea name="reason" required placeholder="Örn: yanlış girilen POS kaydını düzeltmek için"></textarea>
+        <button class="btn btn-purple" style="margin-top:12px">🔓 Bugünlük Geçici Aç</button>
+      </form>
+    {% elif status.reopened_today %}
+      <div class="notice goodbox">Bu gün zaten bugünlük geçici açık.</div>
+    {% elif status.entry_grace %}
+      <div class="notice goodbox">Kayıt girişi 12:00’ye kadar zaten açık; yeniden açmaya gerek yok.</div>
+    {% elif status.is_today %}
+      <div class="notice goodbox">Bugün zaten açıktır; ayrıca açmaya gerek yok.</div>
+    {% else %}
+      <div class="notice">Geçmiş günü yeniden açma yetkisi Ana Yöneticidedir.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if session.get('admin_owner') %}
+<div class="card" style="margin-top:20px">
+  <h2>Toplu gün kilidi açma</h2>
+  <p class="muted">Düzeltme yapacağınız geçmiş tarih aralığını seçin. Başlangıç ve bitiş günleri dahildir; tek işlemde en fazla 366 gün açılır.</p>
+  <div class="notice goodbox">İşlem öncesinde veritabanının otomatik yedeği alınır. Kasa, gider, veresiye, ortak ve personel kayıtları korunur. Açılan günler yalnız bugün boyunca açık kalır; yarın yeniden kilitlenir.</div>
+  <form method="post" action="/admin/day-close/reopen-bulk" onsubmit="return confirmBulkOpen(this)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="formgrid"><div><label for="bulk-start">Başlangıç günü</label><input id="bulk-start" type="date" name="start" value="{{cutoff[:8]}}01" max="{{cutoff}}" required></div><div><label for="bulk-end">Bitiş günü</label><input id="bulk-end" type="date" name="end" value="{{cutoff}}" max="{{cutoff}}" required></div><div><label>Seçilen gün sayısı</label><div class="notice" id="bulk-count" role="status">—</div></div><div class="wide"><label for="bulk-reason">Açma nedeni</label><textarea id="bulk-reason" name="reason" placeholder="Örn: geçmiş aya ait kayıtları kontrol edip düzeltmek için" required></textarea></div></div>
+    <button class="btn btn-primary" style="margin-top:16px">Seçilen günleri bugünlük aç</button>
+  </form>
+</div>
+<script>
+function bulkDayCount(){const start=document.getElementById('bulk-start').value,end=document.getElementById('bulk-end').value;if(!start||!end)return 0;return Math.round((Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000)+1;}
+function updateBulkCount(){const n=bulkDayCount();document.getElementById('bulk-count').textContent=n>0?n+' gün':'Geçerli bir tarih aralığı seçin';}
+function confirmBulkOpen(form){const n=bulkDayCount();if(n<1||n>366){alert('Başlangıç ve bitiş günlerini kontrol edin. En fazla 366 gün seçilebilir.');return false;}return confirm(n+' geçmiş gün bugünlük açılacak. İşlem öncesinde yedek alınacak ve mevcut kayıtlar korunacak. Devam edilsin mi?');}
+document.getElementById('bulk-start').addEventListener('input',updateBulkCount);document.getElementById('bulk-end').addEventListener('input',updateBulkCount);updateBulkCount();
+</script>
+{% endif %}
+
+<div class="card" style="margin-top:16px">
+  <h2>Son Gün Kilitleri</h2>
+  <div class="tablewrap">
+    <table>
+      <tr><th>Tarih</th><th>Durum</th><th>Kapanma</th><th>Kapatan</th><th>Yeniden Açma</th><th>Açan</th><th>Not</th></tr>
+      {% for r in recent %}
+      <tr>
+        <td>{{r.tx_date}}</td>
+        <td><span class="tag {{'bad' if r.is_closed else 'warn'}}">{{'KAPALI' if r.is_closed else 'AÇIK / BEKLİYOR'}}</span></td>
+        <td>{{r.closed_at or '-'}}</td>
+        <td>{{r.closed_by or '-'}}</td>
+        <td>{{r.reopened_at or '-'}}</td>
+        <td>{{r.reopened_by or '-'}}</td>
+        <td>{{r.close_note or '-'}}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+{% endblock %}

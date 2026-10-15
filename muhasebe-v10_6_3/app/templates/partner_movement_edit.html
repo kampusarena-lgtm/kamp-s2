@@ -1,0 +1,43 @@
+
+{% extends "base.html" %}
+{% block title %}Ortak Hareketi Düzenle{% endblock %}
+{% block content %}
+<div class="card" style="max-width:900px;margin:auto">
+<h1>Ortak Hareketi #{{data.id}}</h1>
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="version" value="{{data.version}}">
+<div class="formgrid">
+  <div><label>Tarih</label><input type="date" name="date" value="{{data.tx_date}}" required></div>
+  <div><label>Ortak</label><select name="partner_id">{% for p in partners %}<option value="{{p.id}}" {% if p.id==data.partner_id %}selected{% endif %}>{{p.name}}</option>{% endfor %}</select></div>
+  {% if data.source_type=='PERSONAL_CARD_CLAIM' %}
+  <div><label>Tür</label><input value="ALACAK EKLE · ŞAHSİ KART" readonly><input type="hidden" name="type" value="ALACAK EKLE"></div>
+  <div><label>Kategori</label><select name="claim_category" required>{% for c in categories %}<option {% if c==data.claim_category %}selected{% endif %}>{{c}}</option>{% endfor %}</select></div>
+  {% else %}
+  <div><label>Tür</label><select name="type" id="epmt" onchange="togEPM()">{% for t in movement_types %}<option {% if t==data.movement_type %}selected{% endif %}>{{t}}</option>{% endfor %}</select></div>
+  {% endif %}
+  <div><label>Tutar</label><input type="number" step="0.01" min="0.01" name="amount" value="{{data.amount}}" required></div>
+  <div id="epmw"><label>Ödeme Yöntemi</label><input name="payment_method" id="epmm" value="{{'NAKİT' if data.movement_type=='ALACAK ÖDEME' else '-'}}" readonly></div>
+  <div id="eptw">
+    <label>Neye Mahsup Edilsin?</label>
+    <select name="payment_target" id="eptm">
+      <option value="AUTO" {% if (data.payment_target or 'AUTO')=='AUTO' %}selected{% endif %}>Otomatik · En Eski Borçtan</option>
+      <option value="MASRAF" {% if data.payment_target=='MASRAF' %}selected{% endif %}>Bekleyen Şahsi Karttan</option>
+      <option value="KAR_PAYI" {% if data.payment_target=='KAR_PAYI' %}selected{% endif %}>Kâr Payı Alacağından</option>
+    </select>
+  </div>
+  <div class="wide"><label>Açıklama</label><textarea name="note">{{data.note}}</textarea></div>
+  <div class="wide"><button class="btn btn-primary">Güncelle</button></div>
+</div>
+</form>
+</div>
+<script>
+function togEPM(){
+ const t=document.getElementById('epmt'); const y=t && t.value==='ALACAK ÖDEME';
+ document.getElementById('epmw').style.display=y?'block':'none';
+ document.getElementById('eptw').style.display=y?'block':'none';
+ document.getElementById('epmm').required=y;
+ if(y){document.getElementById('epmm').value='NAKİT'}else{document.getElementById('epmm').value='-';document.getElementById('eptm').value='AUTO'}
+}
+togEPM();
+</script>
+{% endblock %}

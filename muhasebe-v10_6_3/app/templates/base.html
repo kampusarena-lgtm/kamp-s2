@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Kampüs Arena Muhasebe{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body{% if session.get('admin') %} data-admin-timeout="600" data-admin-remaining="{{admin_idle_remaining()}}" data-csrf="{{csrf_token()}}"{% endif %}>
+<a class="skip-link" href="#main">İçeriğe geç</a>
+<aside class="sidebar" id="sidebar" aria-label="Ana menü">
+<a class="brand" href="{{ '/admin' if session.get('admin') else '/' }}"><span class="brand-symbol">KA</span><span>Kampüs Arena<small>Muhasebe yönetimi</small></span></a>
+<nav>
+<div class="nav-label">GÜNLÜK İŞLEMLER</div>
+<a class="nav-link {{'active' if request.path=='/'}}" href="/"><span class="nav-icon">＋</span>İşlem girişi</a>
+<a class="nav-link {{'active' if request.path.startswith('/personel/mesai')}}" href="/personel/mesai"><span class="nav-icon">◷</span>Mesai kaydı</a>
+{% if session.get('admin') %}
+<div class="nav-label">YÖNETİM</div>
+{% for href,label,icon in [('/admin','Genel bakış','▦'),('/admin/cash','Kasa','▣'),('/admin/expenses','Giderler','↗'),('/admin/credit','Veresiye','⇄'),('/admin/personnel','Personel ve maaş','♙'),('/admin/partners','Ortaklar','◇'),('/admin/reports','Kâr-zarar ve raporlar','▥'),('/admin/day-close','Gün kilidi','◈')] %}
+<a class="nav-link {{'active' if (request.path==href if href=='/admin' else request.path.startswith(href))}}" href="{{href}}"><span class="nav-icon">{{icon}}</span>{{label}}</a>
+{% endfor %}
+<div class="nav-label">SİSTEM</div>
+<a class="nav-link {{'active' if request.path.startswith('/admin/settings')}}" href="/admin/settings"><span class="nav-icon">⚙</span>Ayarlar</a>
+<a class="nav-link {{'active' if request.path=='/admin/audit'}}" href="/admin/audit"><span class="nav-icon">≡</span>İşlem geçmişi</a>
+<a class="nav-link {{'active' if request.path=='/admin/logs'}}" href="/admin/logs"><span class="nav-icon">⌘</span>Sistem kayıtları</a>
+{% else %}
+<div class="nav-label">YÖNETİM</div>
+<a class="nav-link {{'active' if request.path=='/admin-login'}}" href="/admin-login"><span class="nav-icon">▦</span>Yönetici girişi</a>
+{% endif %}
+</nav>
+<div class="sidebar-foot"><span class="status-dot"></span> Kampüs Arena Muhasebe<small>V10.6.3 · Günlük çalışma alanı</small></div>
+</aside>
+<div class="app-shell">
+<header class="topbar"><div class="topbar-left"><button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Menüyü aç">☰</button><span class="workspace-title">İşletme çalışma alanı</span></div><div class="topbar-actions">{% if session.get('admin') %}<a class="btn btn-sm" href="/download-excel">Excel indir</a><span class="user-chip"><span class="avatar">{{session.get('admin_username','Y')[:1]|upper}}</span>{{session.get('admin_username')}}</span><a class="text-link" href="/logout">Çıkış</a>{% else %}<a class="btn btn-primary btn-sm" href="/admin-login">Yönetici girişi</a>{% endif %}</div></header>
+<main class="wrap" id="main">
+{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="flash {{category}}" role="{{'alert' if category=='danger' else 'status'}}">{{message}}</div>{% endfor %}{% endwith %}
+{% block content %}{% endblock %}
+</main>
+<footer class="page-footer">Kampüs Arena <span>·</span> Muhasebe günü 09:00 — ertesi gün 09:00</footer>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% if session.get('admin') %}<script src="{{url_for('static',filename='admin-idle.js')}}"></script>{% endif %}
+{% block scripts %}{% endblock %}
+</body></html>

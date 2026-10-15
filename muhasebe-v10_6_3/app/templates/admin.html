@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block title %}Genel Bakış{% endblock %}{% block content %}
+<div class="toolbar"><div><h1 style="margin:0">Genel Bakış</h1><div class="muted">Seçtiğiniz ayın gelir, gider ve işletme özeti.</div></div><form class="toolbar push"><div><label>Ay</label><input type="month" name="month" value="{{month}}"></div><button class="btn btn-primary">Göster</button></form></div>
+{% if not has_personnel %}<div class="setup-banner"><div><h2>İlk kullanım için hazır olun</h2><p>Personelinizi ve maaş bilgilerini ekleyin; ardından günlük işlemlere başlayın.</p></div><a class="btn btn-primary" href="/admin/settings">Personel ekle →</a></div>{% endif %}
+<div class="shortcut-row"><a class="btn btn-primary" href="/">＋ Yeni işlem</a><a class="btn" href="/admin/personnel">Personel ve maaş</a><a class="btn" href="/admin/reports">Dönem raporu</a></div>
+<div class="kpis" style="margin-bottom:15px"><div class="kpi"><span class="muted">PanCafe Ciro</span><b>{{"%.2f"|format(p.revenue)}} TL</b></div><div class="kpi"><span class="muted">Gerçekleşen Gider</span><b>{{"%.2f"|format(p.economic_expense)}} TL</b></div><div class="kpi"><span class="muted">Faaliyet Sonucu</span><b class="{{'amount-good' if p.operating_profit>=0 else 'amount-bad'}}">{{"%.2f"|format(p.operating_profit)}} TL</b></div><div class="kpi"><span class="muted">Genel Para Çıkışı</span><b>{{"%.2f"|format(p.general_cash_out)}} TL</b></div><div class="kpi"><span class="muted">Toplam Ortaklara Borç</span><b class="{{'amount-bad' if p.partner_debt>0 else 'amount-good'}}">{{"%.2f"|format(p.partner_debt)}} TL</b></div><div class="kpi"><span class="muted">PanCafe Bekleyen</span><b class="{{'amount-warn' if p.waiting else 'amount-good'}}">{{p.waiting}}</b></div></div>
+<div class="grid">
+<div class="card">
+<h2>Gün durumu</h2>
+<div class="notice {{'warnbox' if day.is_closed else 'goodbox'}}"><b>{{today}} · {{"KİLİTLİ" if day.is_closed else "BUGÜN AÇIK"}}</b><br>Bugün için manuel kapatma yok.</div>
+<div class="notice {{'warnbox' if yesterday_status.waiting or yesterday_status.reopened_today else 'goodbox'}}" style="margin-top:10px">
+<b>{{yesterday}} · {{yesterday_status.auto_state}}</b><br>
+{% if yesterday_status.entry_grace %}
+Kasa 09:00’da kapandı; bu güne ait kayıtları bugün 12:00’ye kadar girebilirsiniz.
+{% elif yesterday_status.waiting %}
+{{yesterday_status.waiting}} PanCafe kaydı bekliyor. Diğer işlemler kilitli; sistem PanCafe GENEL TOPLAM'ı otomatik alınca gün kapanır.
+{% elif yesterday_status.reopened_today %}
+Ana Yönetici düzeltme için bugün geçici açmış. Yarın tekrar otomatik kilitlenir.
+{% else %}
+Kapanan gün saat 12:00’de otomatik kilitlenir. Daha eski günler kilitli kalır.
+{% endif %}
+</div>
+<a class="btn btn-primary" style="margin-top:12px" href="/admin/day-close?date={{yesterday}}">Gün kilidini incele</a>
+</div>
+<div class="card"><h2>Sistem Durumu</h2><div class="notice"><b>Son Excel senkronu:</b> {{last_sync}}<br><b>Son DB yedeği:</b> {{last_backup}}{% if sync_error %}<br><span class="amount-bad"><b>Excel senkron hatası:</b> {{sync_error}}</span>{% endif %}</div><div class="notice" style="margin-top:10px"><b>PanCafe otomatik:</b> {{'HAZIR' if pancafe_auto.ready else 'KURULUM EKSİK'}}<br><b>Son PanCafe:</b> {{pancafe_auto.last_day or '-'}} / {{pancafe_auto.last_total or '-'}} TL{% if pancafe_auto.last_error %}<br><span class="amount-bad">{{pancafe_auto.last_error}}</span>{% endif %}</div></div>
+</div>
+<div class="grid" style="margin-top:16px"><div class="card"><h2>Son Kasa Kayıtları</h2><div class="tablewrap"><table><tr><th>Tarih</th><th>Personel</th><th>PanCafe</th><th>Hesaplanan</th><th>Durum</th></tr>{% for r in recent_cash %}<tr><td>{{r.tx_date}}</td><td>{{r.actor_name}}</td><td>{{'-' if r.pancafe is none else '%.2f'|format(r.pancafe)}}</td><td>{{"%.2f"|format(r.calc)}}</td><td><span class="tag {{'ok' if r.status=='EŞİT' else ('warn' if r.status in ['FAZLA','PANCAFE BEKLİYOR'] else 'bad')}}">{{r.status}}</span></td></tr>{% else %}<tr><td colspan="5"><div class="empty-state"><strong>Henüz kasa kaydı yok</strong>İşlem girişinden ilk günün kasa kaydını oluşturun.</div></td></tr>{% endfor %}</table></div></div><div class="card"><h2>Son Giderler</h2><div class="tablewrap"><table><tr><th>Tarih</th><th>Kategori</th><th>Tutar</th><th>Tür</th></tr>{% for r in recent_expenses %}<tr><td>{{r.tx_date}}</td><td>{{r.category}}</td><td>{{"%.2f"|format(r.amount)}} TL</td><td>{% if r.system_type=='PARTNER_CARD_REIMBURSEMENT' %}<span class="tag purple">ŞAHSİ KART TAHSİLATI</span>{% else %}<span class="tag ok">İŞLETME</span>{% endif %}</td></tr>{% else %}<tr><td colspan="4"><div class="empty-state"><strong>Henüz gider kaydı yok</strong>Gider eklediğinizde burada listelenir.</div></td></tr>{% endfor %}</table></div></div></div>
+{% endblock %}
