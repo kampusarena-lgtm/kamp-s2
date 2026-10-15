@@ -18,3 +18,5 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r muhasebe-v10_6_3/app/requirements.txt
       - run: python muhasebe-v10_6_3/test_noon_lock.py
+
+      - run: python muhasebe-v10_6_3/app/tests/test_application.py

@@ -1,10 +1,10 @@
-import importlib.util, pathlib, tempfile, shutil, sqlite3, unittest
+import importlib.util, pathlib, tempfile, shutil, sqlite3, unittest, sys
 from datetime import datetime as RealDateTime, timedelta
 ROOT=pathlib.Path(__file__).resolve().parent
 TEMP=pathlib.Path(tempfile.mkdtemp(prefix="noon-lock-tests-"))
 shutil.copytree(ROOT/"app",TEMP/"app",dirs_exist_ok=True)
 spec=importlib.util.spec_from_file_location("tested_accounting_app",TEMP/"app"/"app.py")
-a=importlib.util.module_from_spec(spec);spec.loader.exec_module(a)
+a=importlib.util.module_from_spec(spec);sys.modules[spec.name]=a;spec.loader.exec_module(a)
 class Frozen(RealDateTime):
     value=RealDateTime(2026,10,16,10)
     @classmethod
